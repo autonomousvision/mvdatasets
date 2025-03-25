@@ -45,7 +45,7 @@ print("all_unique_segs", all_unique_segs)
 #     mask = np.zeros_like(seg)
 #     mask[seg == 1] = 1
 #     all_masks.append(mask)
-    
+
 # # vis first mask
 # mask = all_masks[0]
 # plt.imshow(mask, cmap="gray")

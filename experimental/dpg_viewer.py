@@ -25,8 +25,8 @@ from dataclasses import dataclass
 
 class Open3DRenderer:
     def __init__(self, width, height):
-        
-        # 
+
+        #
         self.height = height
         self.width = width
         self.renderer = o3d.visualization.rendering.OffscreenRenderer(
@@ -69,11 +69,11 @@ class Open3DRenderer:
 
         # # setup camera using explicit intrinsic and extrinsic matrices
         # self.renderer.setup_camera(intrinsic_matrix, extrinsic_matrix, 800, 600)
-        
+
         #
         self.frustum_dict = {}
         self.pc_dict = {}
-        
+
     def add_camera(self, camera: Camera, name: str, color=[0, 0, 0]):
 
         from experimental.gui.frustum import create_frustum
@@ -149,11 +149,11 @@ class GUI:
 
         with dpg.window(tag="primary_window"):
             dpg.add_image("canvas")
-            
+
         # set the privary window
         dpg.set_primary_window("primary_window", True)
-        
-        # 
+
+        #
         # iterate over training cameras and add them
         for i, camera in enumerate(mv_data.get_split("train")):
             self.o3d_renderer.add_camera(camera, f"train_{i}", color=[0, 0, 0])
@@ -165,7 +165,7 @@ class GUI:
         # iterate over validation cameras and add them
         for i, camera in enumerate(mv_data.get_split("val")):
             self.o3d_renderer.add_camera(camera, f"val_{i}", color=[0, 0, 1])
-            
+
         # iterate over point clouds and add them
         for i, pc in enumerate(mv_data.get_point_clouds()):
             self.o3d_renderer.add_point_cloud(pc, f"pc_{i}")
@@ -206,10 +206,10 @@ class GUI:
         # Flip vertically (Open3D has top-left origin, DPG expects bottom-left)
         # img_data = np.flip(img_data, axis=0)
         # print(img_data.shape)
-        
-        # 
+
+        #
         img_data = o3d_img
-        
+
         # convert RGB to RGBA (DPG requires 4 channels)
         if img_data.shape[-1] == 3:
             # add Alpha

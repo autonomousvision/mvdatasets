@@ -42,7 +42,7 @@ def load(
         int: Number of sequence frames
         float: Frames per second
     """
-    
+
     scene_path = dataset_path / scene_name
     splits = config["splits"]
 
@@ -61,19 +61,19 @@ def load(
             print(f"\t{k}: {v}")
 
     # -------------------------------------------------------------------------
-    
+
     # get all rgbs paths
     rgbs_dir = scene_path / "rgb"
     rgbs_paths = sorted(list(rgbs_dir.glob("*.png")))
     # sort by name
     rgbs_paths = sorted(rgbs_paths, key=lambda x: "".join(str(x).split(".")[:-1]))
-    
+
     # get all depth paths
     depths_dir = scene_path / "depth"
     depths_paths = sorted(list(depths_dir.glob("*.png")))
     # sort by name
     depths_paths = sorted(depths_paths, key=lambda x: "".join(str(x).split(".")[:-1]))
-    
+
     # parse groundtruth.txt
     # timestamp tx ty tz qx qy qz qw
     poses = []
@@ -86,7 +86,7 @@ def load(
             tx, ty, tz = map(float, line[1:4])
             qx, qy, qz, qw = map(float, line[4:])
             poses.append([timestamp, tx, ty, tz, qx, qy, qz, qw])
-    
+
     frame_rate = 30
-    
+
     raise NotImplementedError("tum loader not implemented yet")

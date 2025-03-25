@@ -165,6 +165,7 @@ def global_inv_perspective_projection(
     c2w: Union[np.ndarray, torch.Tensor],
     points_2d_screen: Union[np.ndarray, torch.Tensor],
     depth: Union[np.ndarray, torch.Tensor],
+    depth_type: str = "z-depth",
 ) -> Union[np.ndarray, torch.Tensor]:
     """
     Unprojects 2D screen points to 3D world space using camera intrinsics and pose.
@@ -208,12 +209,12 @@ def global_inv_perspective_projection(
     else:
         raise ValueError("`points_2d_screen` must be a torch.Tensor or np.ndarray.")
 
-    # Ray origin is the camera center
-    rays_o = c2w[:3, -1]  # Extract camera center from the last column of c2w
-    if isinstance(rays_o, torch.Tensor):
-        rays_o = rays_o[None, ...]  # Add batch dimension for consistency
-    else:
-        rays_o = np.expand_dims(rays_o, axis=0)
+    # # Ray origin is the camera center
+    # rays_o = c2w[:3, -1]  # Extract camera center from the last column of c2w
+    # if isinstance(rays_o, torch.Tensor):
+    #     rays_o = rays_o[None, ...]  # Add batch dimension for consistency
+    # else:
+    #     rays_o = np.expand_dims(rays_o, axis=0)
 
     # Unproject 2D screen points to camera space
     points_3d_camera = local_inv_perspective_projection(
@@ -221,25 +222,72 @@ def global_inv_perspective_projection(
         points_2d_screen,
     )
 
-    # multiply by depth
-    points_3d_camera *= depth[..., None]
+    if depth_type == "radial-depth":
+
+        # Normalize the direction vectors
+        if isinstance(points_3d_camera, torch.Tensor):
+            # rays_d = F.normalize(points_3d_world, dim=-1)
+            rays_d = points_3d_camera / torch.norm(
+                points_3d_camera, dim=-1, keepdim=True
+            )
+        else:
+            rays_d = points_3d_camera / np.linalg.norm(
+                points_3d_camera, axis=-1, keepdims=True
+            )
+
+        # Scale direction vectors by depth
+        points_3d_camera = rays_d * depth[..., None]
+
+    elif depth_type == "z-depth":
+
+        # Multiply by depth
+        points_3d_camera *= depth[..., None]
+
+    else:
+        raise ValueError(f"Invalid depth type: {depth_type}")
 
     # Transform points from camera space to world space
-    points_3d_world = (c2w[:3, :3] @ points_3d_camera.T).T
-
-    # # Normalize the direction vectors
-    # if isinstance(points_3d_world, torch.Tensor):
-    #     # rays_d = F.normalize(points_3d_world, dim=-1)
-    #     rays_d = points_3d_world / torch.norm(points_3d_world, dim=-1, keepdim=True)
-    # else:
-    #     rays_d = points_3d_world / np.linalg.norm(
-    #         points_3d_world, axis=-1, keepdims=True
-    #     )
-
-    # # Scale direction vectors by depth
-    # points_3d_world = rays_d * depth[..., None]
-
-    # Add ray origin to scale and translate points
-    points_3d_world += rays_o
+    points_3d_world = (c2w[:3, :3] @ points_3d_camera.T).T + c2w[:3, 3]
 
     return points_3d_world
+
+
+def radial_to_z_depth(radial_depth_map, fx, fy, cx, cy):
+    """
+    Convert a radial depth map r(u,v) to a z-depth map z(u,v)
+    under a simple pinhole model with intrinsics (fx, fy, cx, cy).
+
+    Parameters
+    ----------
+    radial_depth_map : (H, W) np.ndarray
+        Array of radial depths, in float format.
+    fx, fy : float
+        Focal lengths of the camera.
+    cx, cy : float
+        Principal point (image center) in pixel coordinates.
+
+    Returns
+    -------
+    z_depth_map : (H, W) np.ndarray
+        The z-depth map corresponding to the input radial depths.
+    """
+    H, W = radial_depth_map.shape[:2]
+
+    # Create a grid of pixel coordinates
+    # row_indices ~ v, col_indices ~ u
+    row_indices, col_indices = np.indices((H, W))
+
+    # Convert from pixel coords to normalized camera-plane coords
+    x_norm = (col_indices - cx) / fx
+    y_norm = (row_indices - cy) / fy
+
+    # denominator = sqrt(x_norm^2 + y_norm^2 + 1)
+    denom = np.sqrt(x_norm**2 + y_norm**2 + 1)
+
+    # z = radial_depth / denom
+    z_depth_map = radial_depth_map / denom
+
+    # make sure output dtype is the same as input dtype
+    z_depth_map = z_depth_map.astype(radial_depth_map.dtype)
+
+    return z_depth_map

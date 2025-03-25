@@ -96,7 +96,7 @@ def load(
     for pose in poses:
         poses_list.append(_tum_to_c2w(pose))
     print(f"Loaded poses.npy, {len(poses_list)} frames found")
-        
+
     # open tstamps.npy
     tstamps_file = scene_path / "tstamps.npy"
     timestamps = np.load(tstamps_file)
@@ -121,13 +121,10 @@ def load(
     global_transform[:3, :3] = scene_radius_mult * rot
 
     # local transform
-    local_transform = np.array([
-        [-1, 0, 0, 0],
-        [0, 0, 1, 0],
-        [0, 1, 0, 0],
-        [0, 0, 0, 1]
-    ])
-    
+    local_transform = np.array(
+        [[-1, 0, 0, 0], [0, 0, 1, 0], [0, 1, 0, 0], [0, 0, 0, 1]]
+    )
+
     # load points.npy
     points_file = scene_path / "points.npy"
     frames_points = np.load(points_file)  # (N, 3)
@@ -135,7 +132,7 @@ def load(
     point_clouds = []
     # for frame_points in frames_points:
     #     point_clouds.append(PointCloud(frame_points.reshape(-1, 3)))
-        
+
     # rgbs_list = None
     # depths_list = None
     # if config["pose_only"]:
@@ -154,31 +151,31 @@ def load(
     images_all = images_all[..., ::-1]
     ds_width, ds_height = images_all.shape[2], images_all.shape[1]
     print(images_all.shape)
-    
+
     # load low resolution droid-slam depths
     # if config["load_depths"]:
     # depths_file = scene_path / "disps.npy"
     # depths_all = np.load(depths_file)  # (N, H, W)  # TODO: divide for depths
     # print(depths_all.shape)
-    
+
     # find all frame_0000.png frames rgb
     rgb_frames_paths = list(scene_path.glob("rgb/*.jpg"))
     rgb_frames_paths = sorted(rgb_frames_paths)
     print(f"Found {len(rgb_frames_paths)} RGB frames")
-    
+
     # find all frame_0000.npy frames depth
     depth_frames_paths = list(scene_path.glob("depth/*.npy"))
     depth_frames_paths = sorted(depth_frames_paths)
     print(f"Found {len(depth_frames_paths)} depth frames")
-    
+
     #
     rgb_frames = []
     pbar = tqdm(rgb_frames_paths, desc="rgbs", ncols=100)
     for rgb_frame_path in pbar:
         rgb = image_to_numpy(Image.open(rgb_frame_path), use_uint8=True)
         rgb_frames.append(rgb)
-    
-    # 
+
+    #
     depth_frames = []
     pbar = tqdm(depth_frames_paths, desc="depths", ncols=100)
     for depth_frame_path in pbar:
@@ -186,13 +183,13 @@ def load(
         # multiply depth times scene scale mult
         depth *= scene_radius_mult
         depth_frames.append(depth)
-        
+
     # get first image shape
     width, height = rgb_frames[0].shape[1], rgb_frames[0].shape[0]
-    
+
     print(f"Loaded {len(rgb_frames)} RGB frames, {len(depth_frames)} depth frames")
     print(f"Image shape: {width}x{height}, droid-slam shape: {ds_width}x{ds_height}")
-    
+
     # open intrinsics.npy
     pred_intrinsics_file = scene_path / "intrinsics.npy"
     intrinsics = np.load(pred_intrinsics_file)[0]
@@ -202,7 +199,7 @@ def load(
     cy = height / 2  # intrinsics[3]
     intrinsics = np.array([[fx, 0, cx], [0, fy, cy], [0, 0, 1]])
     print(intrinsics)
-    
+
     # TODO: do need to rescale focal length?
 
     # cameras objects
@@ -211,12 +208,12 @@ def load(
         cameras_splits[split] = []
 
         for i, idx in enumerate(frames_idxs):
-            
+
             # if images_all is None:
             #     rgbs = None
             # else:
             rgbs = rgb_frames[idx][None, ...]
-            
+
             # if depths_all is None:
             #     depths = None
             # else:

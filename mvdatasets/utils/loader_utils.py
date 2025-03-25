@@ -22,7 +22,7 @@ def get_min_max_cameras_distances(poses: list) -> tuple:
 
     min_dist = np.min(camera_distances_from_origin)
     max_dist = np.max(camera_distances_from_origin)
-    
+
     min_dist = np.clip(min_dist, 1e-6, None)
     max_dist = np.clip(max_dist, 1e-6, None)
 

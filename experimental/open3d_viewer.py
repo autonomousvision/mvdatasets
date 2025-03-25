@@ -33,14 +33,10 @@ def get_scale(scene_radius: float) -> float:
 
 class GUI:
 
-    def __init__(
-        self,
-        mv_data: MVDataset,
-        config: dict = {}
-    ):
-        # 
+    def __init__(self, mv_data: MVDataset, config: dict = {}):
+        #
         self.scale = get_scale(mv_data.get_scene_radius())
-        
+
         app = o3d.visualization.gui.Application.instance
         app.initialize()
 
@@ -103,7 +99,7 @@ class GUI:
         self.widget3d.scene.show_geometry(name, self.pc_chbox.checked)
 
         return pcd
-    
+
     def init_widget(self):
 
         #

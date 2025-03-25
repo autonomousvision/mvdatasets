@@ -1,87 +1,166 @@
 import unittest
-import torch
 import numpy as np
+import torch
+
 from mvdatasets.geometry.quaternions import (
-    quat_multiply,
-    quat_invert,
-    make_quaternion_deg,
-    make_quaternion_rad,
+    quats_multiply,
+    quats_invert,
+    quats_from_degs,
+    quats_from_rads,
     rots_to_quats,
-    angular_distance,
+    quats_angular_distance,
     quats_to_rots,
 )
 
 
+def to_numpy(x):
+    """Utility to convert either a torch.Tensor or np.ndarray to np.ndarray."""
+    if isinstance(x, torch.Tensor):
+        return x.detach().cpu().numpy()
+    elif isinstance(x, np.ndarray):
+        return x
+    else:
+        return np.array(x)
+
+
 class TestQuaternionFunctions(unittest.TestCase):
 
-    def test_quat_multiply(self):
-        a = torch.tensor([[1.0, 0.0, 0.0, 0.0]])
-        b = torch.tensor([[0.0, 1.0, 0.0, 0.0]])
-        result = quat_multiply(a, b)
-        expected = torch.tensor([[0.0, 1.0, 0.0, 0.0]])
-        self.assertTrue(torch.allclose(result, expected))
+    def test_quats_multiply(self):
+        for arr_fn, arr_name in [
+            (torch.tensor, "torch.tensor"),
+            (np.array, "np.array"),
+        ]:
+            with self.subTest(msg=f"Testing quats_multiply with {arr_name}"):
+                # Simple test
+                a = arr_fn([[0.0, 0.0, 0.0, 1.0]], dtype=float)
+                b = arr_fn([[1.0, 0.0, 0.0, 0.0]], dtype=float)
+                result = quats_multiply(a, b)
+                expected = arr_fn([[1.0, 0.0, 0.0, 0.0]], dtype=float)
 
-        # Test associativity of quaternion multiplication
-        c = torch.tensor([[0.0, 0.0, 1.0, 0.0]])
-        result_abc = quat_multiply(quat_multiply(a, b), c)
-        result_cba = quat_multiply(a, quat_multiply(b, c))
-        self.assertTrue(torch.allclose(result_abc, result_cba))
+                self.assertTrue(
+                    np.allclose(to_numpy(result), to_numpy(expected), atol=1e-4),
+                    f"quats_multiply({arr_name}): {result} vs {expected}",
+                )
 
-    def test_quat_invert(self):
-        q = torch.tensor([[0.7071, 0.7071, 0.0, 0.0]])
-        result = quat_invert(q)
-        expected = torch.tensor([[0.7071, -0.7071, 0.0, 0.0]])
-        self.assertTrue(torch.allclose(result, expected))
+                # Associativity check
+                c = arr_fn([[0.0, 1.0, 0.0, 0.0]], dtype=float)
+                result_abc = quats_multiply(quats_multiply(a, b), c)
+                result_cba = quats_multiply(a, quats_multiply(b, c))
 
-        # Verify double inversion gives the original quaternion
-        double_inverted = quat_invert(result)
-        self.assertTrue(torch.allclose(double_inverted, q))
+                self.assertTrue(
+                    np.allclose(to_numpy(result_abc), to_numpy(result_cba), atol=1e-4),
+                    "Quaternion multiplication should be associative",
+                )
 
-    def test_make_quaternion_deg(self):
-        q = make_quaternion_deg(90, 0, 0)
-        expected = torch.tensor([0.7071, 0.7071, 0.0, 0.0])
-        self.assertTrue(torch.allclose(q, expected, atol=1e-4))
+    def test_quats_invert(self):
+        for arr_fn, arr_name in [
+            (torch.tensor, "torch.tensor"),
+            (np.array, "np.array"),
+        ]:
+            with self.subTest(msg=f"Testing quats_invert with {arr_name}"):
+                q = arr_fn([[0.7071, 0.0, 0.0, 0.7071]], dtype=float)
+                result = quats_invert(q)
+                expected = arr_fn([[-0.7071, 0.0, 0.0, 0.7071]], dtype=float)
 
-    def test_make_quaternion_rad(self):
-        q = make_quaternion_rad(np.pi / 2, 0, 0)
-        expected = torch.tensor([0.7071, 0.7071, 0.0, 0.0])
-        self.assertTrue(torch.allclose(q, expected, atol=1e-4))
+                self.assertTrue(
+                    np.allclose(to_numpy(result), to_numpy(expected), atol=1e-4),
+                    f"Inversion mismatch with {arr_name}",
+                )
+
+                # Double-inversion returns original
+                double_inverted = quats_invert(result)
+                self.assertTrue(
+                    np.allclose(to_numpy(double_inverted), to_numpy(q), atol=1e-4),
+                    "Double inversion should yield the original quaternion",
+                )
+
+                # (Optional) Check q * invert(q) = identity
+                identity = arr_fn([[0.0, 0.0, 0.0, 1.0]], dtype=float)
+                q_inv_mult = quats_multiply(q, quats_invert(q))
+                self.assertTrue(
+                    np.allclose(to_numpy(q_inv_mult), to_numpy(identity), atol=1e-4),
+                    "q * invert(q) should yield identity quaternion",
+                )
 
     def test_rots_to_quats(self):
-        rots = torch.eye(3).unsqueeze(0)  # Single identity matrix
-        result = rots_to_quats(rots)
-        expected = torch.tensor([[1.0, 0.0, 0.0, 0.0]])
-        self.assertTrue(torch.allclose(result, expected))
+        for arr_fn, arr_name in [
+            (torch.tensor, "torch.tensor"),
+            (np.array, "np.array"),
+        ]:
+            with self.subTest(msg=f"Testing rots_to_quats with {arr_name}"):
+                # Identity rotation
+                eye_3x3 = np.eye(3)[None]  # shape (1,3,3)
+                rots = arr_fn(eye_3x3, dtype=float)
+                result = rots_to_quats(rots)
+                expected = arr_fn([[0.0, 0.0, 0.0, 1.0]], dtype=float)
+                print(result, expected)
+                self.assertTrue(
+                    np.allclose(to_numpy(result), to_numpy(expected), atol=1e-4),
+                    f"Identity rotation mismatch with {arr_name}",
+                )
 
-        # Test rotation matrix for a 90-degree rotation around Z-axis
-        rot_z = torch.tensor([[[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]])
-        result = rots_to_quats(rot_z)
-        expected = torch.tensor([[0.7071, 0.0, 0.0, 0.7071]])
-        self.assertTrue(torch.allclose(result, expected, atol=1e-4))
+                # 90° around Z
+                rot_z = np.array(
+                    [[[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]], dtype=float
+                )
+                rots = arr_fn(rot_z, dtype=float)
+                result = rots_to_quats(rots)
+                expected = arr_fn([[0.0, 0.0, 0.7071, 0.7071]], dtype=float)
+                self.assertTrue(
+                    np.allclose(to_numpy(result), to_numpy(expected), atol=1e-4),
+                    f"Rotation around Z mismatch with {arr_name}",
+                )
 
-    def test_angular_distance(self):
-        q1 = torch.tensor([[1.0, 0.0, 0.0, 0.0]])
-        q2 = torch.tensor([[0.7071, 0.7071, 0.0, 0.0]])
-        result = angular_distance(q1, q2)
-        expected = torch.tensor([0.2929])  # 1 - abs(dot_product)
-        self.assertTrue(torch.allclose(result, expected, atol=1e-4))
+    def test_quats_angular_distance(self):
+        for arr_fn, arr_name in [
+            (torch.tensor, "torch.tensor"),
+            (np.array, "np.array"),
+        ]:
+            with self.subTest(msg=f"Testing quats_angular_distance with {arr_name}"):
+                # q1 = identity
+                q1 = arr_fn([[0.0, 0.0, 0.0, 1.0]], dtype=float)
+                # q2 = 90 deg about X
+                q2 = arr_fn([[0.7071, 0.0, 0.0, 0.7071]], dtype=float)
+                result = quats_angular_distance(q1, q2)
+                expected = arr_fn([0.2929], dtype=float)
+                self.assertTrue(
+                    np.allclose(to_numpy(result), to_numpy(expected), atol=1e-4),
+                    f"Angular distance mismatch with {arr_name}",
+                )
 
-        # Test angular distance between identical quaternions
-        result = angular_distance(q1, q1)
-        expected = torch.tensor([0.0])
-        self.assertTrue(torch.allclose(result, expected))
+                # Angular distance between identical quaternions -> 0.0
+                result = quats_angular_distance(q1, q1)
+                expected_zero = arr_fn([0.0], dtype=float)
+                self.assertTrue(
+                    np.allclose(to_numpy(result), to_numpy(expected_zero), atol=1e-4),
+                    f"Distance of identical quaternions should be 0 with {arr_name}",
+                )
 
     def test_quats_to_rots(self):
-        quats = torch.tensor([[1.0, 0.0, 0.0, 0.0]])
-        result = quats_to_rots(quats)
-        expected = torch.eye(3).unsqueeze(0)
-        self.assertTrue(torch.allclose(result, expected))
+        for arr_fn, arr_name in [
+            (torch.tensor, "torch.tensor"),
+            (np.array, "np.array"),
+        ]:
+            with self.subTest(msg=f"Testing quats_to_rots with {arr_name}"):
+                # Identity quaternion
+                quats = arr_fn([[0.0, 0.0, 0.0, 1.0]], dtype=float)
+                result = quats_to_rots(quats)
+                expected = arr_fn(np.eye(3)[None], dtype=float)
+                self.assertTrue(
+                    np.allclose(to_numpy(result), to_numpy(expected), atol=1e-4),
+                    f"Identity quaternion -> rotation mismatch with {arr_name}",
+                )
 
-        # Test quaternion to rotation matrix for 90-degree rotation around Y-axis
-        quats = torch.tensor([[0.7071, 0.0, 0.7071, 0.0]])
-        result = quats_to_rots(quats)
-        expected = torch.tensor([[[0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [-1.0, 0.0, 0.0]]])
-        self.assertTrue(torch.allclose(result, expected, atol=1e-4))
+                # 90° rotation around Y
+                quats = arr_fn([[0.0, 0.7071, 0.0, 0.7071]], dtype=float)
+                result = quats_to_rots(quats)
+                expected = np.array(
+                    [[[0.0, 0.0, 1.0], [0.0, 1.0, 0.0], [-1.0, 0.0, 0.0]]], dtype=float
+                )
+                self.assertTrue(
+                    np.allclose(to_numpy(result), expected, atol=1e-4),
+                    f"90° rotation around Y mismatch with {arr_name}",
+                )
 
 
 if __name__ == "__main__":

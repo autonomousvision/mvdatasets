@@ -81,9 +81,7 @@ class OrbitCamera(Camera):
         self.elevation_deg = elevation_deg
 
     def _update(self):
-        intrinsics = _get_intrinsics(
-            self.height, self.width, self.fovy
-        )
+        intrinsics = _get_intrinsics(self.height, self.width, self.fovy)
         self.set_intrinsics(intrinsics)
         self.pose = _get_pose(
             self.azimuth_deg, self.elevation_deg, self.radius, self.center, self.up

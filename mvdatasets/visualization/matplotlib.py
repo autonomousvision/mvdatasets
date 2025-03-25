@@ -1339,7 +1339,7 @@ def _draw_camera_2d(
         # print(rgb.shape, depth.shape)
         combined = np.concatenate([rgb, depth], axis=1)
         ax.imshow(combined)
-        
+
         # # ---
         # # **Create a dummy mappable** to attach the colorbar:
         # sm = mpl.cm.ScalarMappable(cmap=plt.cm.jet, norm=norm)

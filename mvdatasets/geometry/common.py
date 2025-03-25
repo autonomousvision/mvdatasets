@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from typing import Union
 
 
-def convert_6d_to_rotation_matrix(d6: torch.Tensor) -> torch.Tensor:
+def cont6d_to_rots(d6: torch.Tensor) -> torch.Tensor:
     """
     Converts 6D rotation representation by :cite:t:`zhou2019continuity` to rotation matrix using Gram-Schmidt orthogonalization per Section B. Adapted from pytorch3d.
     Args:
@@ -18,6 +18,14 @@ def convert_6d_to_rotation_matrix(d6: torch.Tensor) -> torch.Tensor:
     b2 = F.normalize(b2, dim=-1)
     b3 = torch.cross(b1, b2, dim=-1)
     return torch.stack((b1, b2, b3), dim=-2)
+
+
+def rots_to_cont6d(matrix):
+    """
+    :param matrix (*, 3, 3)
+    :returns 6d vector (*, 6)
+    """
+    return torch.cat([matrix[..., 0], matrix[..., 1]], dim=-1)
 
 
 def rotation_matrix(a: np.ndarray, b: np.ndarray) -> np.ndarray:

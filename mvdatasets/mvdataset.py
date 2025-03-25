@@ -81,11 +81,11 @@ class MVDataset:
             from mvdatasets.loaders.static.colmap import load
 
             res = load(dataset_path, scene_name, config, verbose=verbose)
-            
+
         # tum loader
         elif loader == "tum":
             from mvdatasets.loaders.static.tum import load
-            
+
             res = load(dataset_path, scene_name, config, verbose=verbose)
 
         # DYNAMIC SCENE DATASETS ----------------------------------------------
@@ -125,11 +125,11 @@ class MVDataset:
             from mvdatasets.loaders.dynamic.iphone import load
 
             res = load(dataset_path, scene_name, config, verbose=verbose)
-        
+
         # droid-slam loader
         elif loader == "droid-slam":
             from mvdatasets.loaders.dynamic.droid_slam import load
-            
+
             res = load(dataset_path, scene_name, config, verbose=verbose)
 
         # monst3r loader
@@ -143,11 +143,11 @@ class MVDataset:
             from mvdatasets.loaders.dynamic.flow3d import load
 
             res = load(dataset_path, scene_name, config, verbose=verbose)
-            
+
         # kubric loader
         elif loader == "kubric":
             from mvdatasets.loaders.dynamic.kubric import load
-            
+
             res = load(dataset_path, scene_name, config, verbose=verbose)
         else:
 

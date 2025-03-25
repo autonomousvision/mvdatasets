@@ -10,6 +10,13 @@ from mvdatasets.utils.printing import print_log
 from mvdatasets.geometry.primitives import PointCloud
 
 
+def video_from_frames(frames_path, save_path, fps=10):
+    os.system(
+        f'ffmpeg -y -r {fps} -i {frames_path}/%09d.png -vf scale="trunc(iw/2)*2:trunc(ih/2)*2" -vcodec libx264 -crf 25 -pix_fmt yuv420p {save_path}'
+    )
+    print_log(f"video saved at {save_path}")
+
+
 def make_video_camera_trajectory(
     cameras: List[Camera],
     save_path: Path,  # e.g. Path("./trajectory.mp4"),
@@ -95,10 +102,7 @@ def make_video_camera_trajectory(
         )
 
     # make video from plots in output_path
-    os.system(
-        f'ffmpeg -y -r {fps} -i {output_path}/%09d.png -vf scale="trunc(iw/2)*2:trunc(ih/2)*2" -vcodec libx264 -crf 25 -pix_fmt yuv420p {save_path}'
-    )
-    print_log(f"video saved at {save_path}")
+    video_from_frames(output_path, save_path, fps)
 
     # remove tmp files
     if remove_tmp_files:
@@ -183,10 +187,7 @@ def make_video_depth_unproject(
         )
 
     # make video from plots in output_path
-    os.system(
-        f'ffmpeg -y -r {fps} -i {output_path}/%09d.png -vf scale="trunc(iw/2)*2:trunc(ih/2)*2" -vcodec libx264 -crf 25 -pix_fmt yuv420p {save_path}'
-    )
-    print_log(f"video saved at {save_path}")
+    video_from_frames(output_path, save_path, fps)
 
     # remove tmp files
     if remove_tmp_files:

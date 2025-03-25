@@ -466,14 +466,15 @@ class KubricConfig(DatasetConfig):
                 raise ValueError(
                     f"split {split} not supported, must be one of {valid_splits}"
                 )
-                
+
+
 @dataclass
 class TUMConfig(DatasetConfig):
     # Default dataset configuration
 
     load_depths: bool = True
     """Load depth images"""
-    
+
     def __post__init__(self):
         # Check configuration values
         super().__post__init__()
@@ -487,7 +488,8 @@ class TUMConfig(DatasetConfig):
                 raise ValueError(
                     f"split {split} not supported, must be one of {valid_splits}"
                 )
-    
+
+
 # -------------------------------------------------------------------------------
 
 
