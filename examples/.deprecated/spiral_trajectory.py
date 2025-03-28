@@ -19,11 +19,11 @@ class SphereSpiral:
         # azimuth_min = 0, azimuth_max = 360
         # elevation_min = -90, elevation_max = 90
 
-        def deg2rad(deg):
+        def deg_to_rad(deg):
             return deg * (np.pi / 180)
 
-        azimuth_rad = deg2rad(azimuth_deg)
-        elevation_rad = deg2rad(elevation_deg)
+        azimuth_rad = deg_to_rad(azimuth_deg)
+        elevation_rad = deg_to_rad(elevation_deg)
 
         x = np.cos(azimuth_rad) * np.cos(elevation_rad)
         y = np.sin(azimuth_rad) * np.cos(elevation_rad)

@@ -68,7 +68,7 @@ if __name__ == "__main__":
     # width = 800
     # height = 800
     # vfov = 90.0
-    # focal = (height / 2) / np.tan(np.deg2rad(vfov / 2))
+    # focal = (height / 2) / np.tan(np.deg_to_rad(vfov / 2))
     # cx = width / 2
     # cy = height / 2
     # intrinsics = np.array([

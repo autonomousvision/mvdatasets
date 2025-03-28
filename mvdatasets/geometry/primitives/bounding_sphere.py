@@ -1,7 +1,7 @@
 from rich import print
 import torch
 import numpy as np
-from mvdatasets.geometry.common import deg2rad
+from mvdatasets.geometry.common import deg_to_rad
 from mvdatasets.utils.printing import print_error, print_warning
 
 
@@ -169,8 +169,8 @@ class BoundingSphere:
         azimuth_deg = torch.rand(nr_points, device=self.device) * 360
         elevation_deg = torch.rand(nr_points, device=self.device) * 180 - 90
         radius = torch.rand(nr_points, device=self.device) * (self.get_radius() - eps)
-        azimuth_rad = deg2rad(azimuth_deg)
-        elevation_rad = deg2rad(elevation_deg)
+        azimuth_rad = deg_to_rad(azimuth_deg)
+        elevation_rad = deg_to_rad(elevation_deg)
         x = torch.cos(azimuth_rad) * torch.cos(elevation_rad) * radius
         y = torch.sin(elevation_rad) * radius  # y is up
         z = torch.sin(azimuth_rad) * torch.cos(elevation_rad) * radius
@@ -183,8 +183,8 @@ class BoundingSphere:
         azimuth_deg = torch.rand(nr_points, device=self.device) * 360
         elevation_deg = torch.rand(nr_points, device=self.device) * 180 - 90
         radius = torch.ones(nr_points, device=self.device) * self.get_radius()
-        azimuth_rad = deg2rad(azimuth_deg)
-        elevation_rad = deg2rad(elevation_deg)
+        azimuth_rad = deg_to_rad(azimuth_deg)
+        elevation_rad = deg_to_rad(elevation_deg)
         x = torch.cos(azimuth_rad) * torch.cos(elevation_rad) * radius
         y = torch.sin(elevation_rad) * radius  # y is up
         z = torch.sin(azimuth_rad) * torch.cos(elevation_rad) * radius

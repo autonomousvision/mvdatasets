@@ -1,7 +1,7 @@
 import numpy as np
 from typing import List
 from mvdatasets import Camera
-from mvdatasets.geometry.common import look_at, deg2rad
+from mvdatasets.geometry.common import look_at, deg_to_rad
 
 
 def sample_cameras_on_hemisphere(
@@ -23,8 +23,8 @@ def sample_cameras_on_hemisphere(
 
     azimuth_deg = np.random.uniform(0, 360, nr_cameras)
     elevation_deg = np.random.uniform(-90, 90, nr_cameras)
-    azimuth_rad = deg2rad(azimuth_deg)
-    elevation_rad = deg2rad(elevation_deg)
+    azimuth_rad = deg_to_rad(azimuth_deg)
+    elevation_rad = deg_to_rad(elevation_deg)
     x = np.cos(azimuth_rad) * np.cos(elevation_rad) * radius
     y = np.sin(azimuth_rad) * np.cos(elevation_rad) * radius  # y is up
     z = np.sin(elevation_rad) * radius  # z is up

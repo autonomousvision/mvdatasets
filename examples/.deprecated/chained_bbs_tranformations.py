@@ -72,7 +72,7 @@ def test():
     # bb_pose = np.eye(4)
     # bb_pose[:3, 3] = np.array([1.0, 0.0, 0.0])
     # bb_scale = np.array([0.7, 0.8, 0.9])
-    # bb_pose[:3, :3] = rot_y_3d(deg2rad(45)) @ rot_x_3d(deg2rad(45))
+    # bb_pose[:3, :3] = rot_y_3d(deg_to_rad(45)) @ rot_x_3d(deg_to_rad(45))
     # bb_pose[:3, :3] *= bb_scale
     # bb = BoundingBox(
     #     pose=bb_pose,
@@ -83,7 +83,7 @@ def test():
     # bb_pose = np.eye(4)
     # bb_pose[:3, 3] = np.array([-0.5, 0.5, 0.0])
     # bb_scale = np.array([0.4, 0.3, 0.2])
-    # bb_pose[:3, :3] = rot_y_3d(deg2rad(45)) @ rot_x_3d(deg2rad(45))
+    # bb_pose[:3, :3] = rot_y_3d(deg_to_rad(45)) @ rot_x_3d(deg_to_rad(45))
     # bb_pose[:3, :3] *= bb_scale
     # bb = BoundingBox(
     #     pose=bb_pose,

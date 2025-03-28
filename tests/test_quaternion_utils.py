@@ -146,6 +146,7 @@ class TestQuaternionFunctions(unittest.TestCase):
                 quats = arr_fn([[0.0, 0.0, 0.0, 1.0]], dtype=float)
                 result = quats_to_rots(quats)
                 expected = arr_fn(np.eye(3)[None], dtype=float)
+                print(result, expected)
                 self.assertTrue(
                     np.allclose(to_numpy(result), to_numpy(expected), atol=1e-4),
                     f"Identity quaternion -> rotation mismatch with {arr_name}",

@@ -325,7 +325,7 @@ def load(
 
     # # scene rotation
     # rotate_scene_x_axis_deg = config["rotate_scene_x_axis_deg"]
-    # scene_transform[:3, :3] = rot_x_3d(deg2rad(rotate_scene_x_axis_deg))
+    # scene_transform[:3, :3] = rot_x_3d(deg_to_rad(rotate_scene_x_axis_deg))
 
     # # translate
     # translation_matrix = np.eye(4)

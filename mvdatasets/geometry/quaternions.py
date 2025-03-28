@@ -237,9 +237,9 @@ def quats_from_rads(rad_x, rad_y, rad_z):
         dt = rad_x.dtype
 
         # Convert them to float if needed
-        rx = rad_x.to(dt, copy=False).to(dev)
-        ry = rad_y.to(dt, copy=False).to(dev)
-        rz = rad_z.to(dt, copy=False).to(dev)
+        rx = rad_x.to(dt).to(dev)
+        ry = rad_y.to(dt).to(dev)
+        rz = rad_z.to(dt).to(dev)
 
         # We want to compute w, x, y, z in the [w, x, y, z] format
         # using torch.cos and torch.sin
@@ -262,12 +262,7 @@ def quats_from_rads(rad_x, rad_y, rad_z):
 
         # stack into shape (..., 4). If scalars, shape is (4,).
         # You can handle batch dims by broadcasting or ensuring rad_x, rad_y, rad_z have the same shape.
-        q_wxyz = torch.stack([w, x, y, z], dim=-1)  # shape (...,4)
-
-        # Reorder [w, x, y, z] -> [x, y, z, w]
-        # This will keep the last dimension in the correct order
-        # We'll gather along the last dimension
-        q_xyzw = q_wxyz[..., [1, 2, 3, 0]]
+        q_xyzw = torch.stack([x, y, z, w], dim=-1)  # shape (...,4)
 
         # Normalize
         # shape matching: norm over last dimension
@@ -279,9 +274,9 @@ def quats_from_rads(rad_x, rad_y, rad_z):
     # --- 3) If all inputs are NumPy, do everything in NumPy ---
     elif all_numpy:
         # Convert to float32 if needed
-        rx = rad_x.astype(np.float32, copy=False)
-        ry = rad_y.astype(np.float32, copy=False)
-        rz = rad_z.astype(np.float32, copy=False)
+        rx = rad_x.astype(np.float32)
+        ry = rad_y.astype(np.float32)
+        rz = rad_z.astype(np.float32)
 
         half_rx = rx / 2.0
         half_ry = ry / 2.0
@@ -301,10 +296,7 @@ def quats_from_rads(rad_x, rad_y, rad_z):
 
         # Stack into (N,4) if rad_x, rad_y, rad_z have shape (N,)
         # or just shape (4,) if they're scalars
-        q_wxyz = np.stack([w, x, y, z], axis=-1)
-
-        # Reorder [w, x, y, z] -> [x, y, z, w]
-        q_xyzw = q_wxyz[..., [1, 2, 3, 0]]
+        q_xyzw = np.stack([x, y, z, w], axis=-1)
 
         # Normalize over last dimension
         norms = np.linalg.norm(q_xyzw, axis=-1, keepdims=True)
@@ -649,9 +641,84 @@ def quats_angular_distance(q1, q2):
         )
 
 
+def blender_quats_to_rots(
+    quats: Union[torch.tensor, np.ndarray]
+) -> Union[torch.tensor, np.ndarray]:
+
+    if quats.shape[-1] != 4:
+        raise ValueError("Input quaternions must have last dimension = 4 (x,y,z,w).")
+
+    unsqueezed = False
+    if quats.ndim == 1:
+        unsqueezed = True
+
+    sqrt2 = 1.41421356237309504880
+
+    # Determine whether the input is a torch tensor or numpy array
+    if isinstance(quats, torch.Tensor):
+
+        if unsqueezed:
+            quats = quats.unsqueeze(0)
+
+        # Match the snippet's naming convention
+        q0 = sqrt2 * quats[..., 0]
+        q1 = sqrt2 * quats[..., 1]
+        q2 = sqrt2 * quats[..., 2]
+        q3 = sqrt2 * quats[..., 3]
+
+        # These correspond to "qda, qdb, qdc, qaa, ..." in the snippet
+        qda = q0 * q1
+        qdb = q0 * q2
+        qdc = q0 * q3
+        qaa = q1 * q1
+        qab = q1 * q2
+        qac = q1 * q3
+        qbb = q2 * q2
+        qbc = q2 * q3
+        qcc = q3 * q3
+
+        # Now build the 3x3 matrix in the same row-major order
+        m00 = 1.0 - qbb - qcc
+        m01 = qdc + qab
+        m02 = -qdb + qac
+
+        m10 = -qdc + qab
+        m11 = 1.0 - qaa - qcc
+        m12 = qda + qbc
+
+        m20 = qdb + qac
+        m21 = -qda + qbc
+        m22 = 1.0 - qaa - qbb
+
+        # Concatenate into (..., 9) then reshape to (..., 3, 3)
+        o = torch.stack([m00, m01, m02, m10, m11, m12, m20, m21, m22], dim=-1)
+
+    elif isinstance(quats, np.ndarray):
+
+        if unsqueezed:
+            quats = quats[np.newaxis, :]
+
+        raise NotImplementedError("NumPy implementation not yet available.")
+
+    else:
+        raise TypeError("Input must be a torch.Tensor or np.ndarray")
+
+    # Reshape to (..., 3, 3)
+    rot_shape = quats.shape[:-1] + (3, 3)
+    rots = o.reshape(rot_shape)
+
+    if unsqueezed:
+        rots = rots.squeeze(0)
+
+    return rots
+
+
 def quats_to_rots(
     quats: Union[torch.tensor, np.ndarray]
 ) -> Union[torch.tensor, np.ndarray]:
+
+    if quats.shape[-1] != 4:
+        raise ValueError("Input quaternions must have last dimension = 4 (x,y,z,w).")
 
     unsqueezed = False
     if quats.ndim == 1:
@@ -663,53 +730,76 @@ def quats_to_rots(
         if unsqueezed:
             quats = quats.unsqueeze(0)
 
-        # Reorder from [x, y, z, w] to [w, x, y, z]
-        quats = quats[..., [3, 0, 1, 2]]
-        r, i, j, k = torch.unbind(quats, -1)
-        two_s = 2.0 / (quats * quats).sum(-1)
-        o = torch.stack(
-            (
-                1 - two_s * (j * j + k * k),
-                two_s * (i * j - k * r),
-                two_s * (i * k + j * r),
-                two_s * (i * j + k * r),
-                1 - two_s * (i * i + k * k),
-                two_s * (j * k - i * r),
-                two_s * (i * k - j * r),
-                two_s * (j * k + i * r),
-                1 - two_s * (i * i + j * j),
-            ),
-            -1,
-        )
-        rots = o.view(quats.shape[:-1] + (3, 3))
+        # Split into x, y, z, w
+        x, y, z, w = torch.split(quats, 1, dim=-1)
+
+        # 2 / (x^2 + y^2 + z^2 + w^2)
+        two_s = 2.0 / (x * x + y * y + z * z + w * w)
+
+        # Build all 9 elements in row-major order:
+        #   [ 1 - 2(y^2+z^2),   2(xy - zw),    2(xz + yw) ]
+        #   [ 2(xy + zw),       1 - 2(x^2+z^2), 2(yz - xw) ]
+        #   [ 2(xz - yw),       2(yz + xw),     1 - 2(x^2+y^2) ]
+
+        # Each element's shape is (...,1). We will concatenate along the last dim:
+        r00 = 1 - two_s * (y * y + z * z)
+        r01 = two_s * (x * y - z * w)
+        r02 = two_s * (x * z + y * w)
+
+        r10 = two_s * (x * y + z * w)
+        r11 = 1 - two_s * (x * x + z * z)
+        r12 = two_s * (y * z - x * w)
+
+        r20 = two_s * (x * z - y * w)
+        r21 = two_s * (y * z + x * w)
+        r22 = 1 - two_s * (x * x + y * y)
+
+        # Concatenate row by row in a single dimension:
+        o = torch.cat([r00, r01, r02, r10, r11, r12, r20, r21, r22], dim=-1)
+
+        rot_shape = quats.shape[:-1] + (3, 3)
 
     elif isinstance(quats, np.ndarray):
 
         if unsqueezed:
             quats = quats[np.newaxis, :]
 
-        # Reorder from [x, y, z, w] to [w, x, y, z]
-        quats = quats[..., [3, 0, 1, 2]]
-        r, i, j, k = np.split(quats, 4, axis=-1)
-        two_s = 2.0 / (quats * quats).sum(axis=-1, keepdims=True)
+        # Split into x, y, z, w
+        x, y, z, w = np.split(quats, 4, axis=-1)
+
+        # If you want to guarantee float precision:
+        # quats = quats.astype(np.float32)  # or np.float64
+        # x, y, z, w = [c.astype(np.float32) for c in (x, y, z, w)]
+
+        # 2 / (x^2 + y^2 + z^2 + w^2), shape (...,1)
+        two_s = 2.0 / (x * x + y * y + z * z + w * w)
+
+        # Build all 9 elements in row-major order:
+        #   [ 1 - 2(y^2+z^2),   2(xy - zw),    2(xz + yw) ]
+        #   [ 2(xy + zw),       1 - 2(x^2+z^2), 2(yz - xw) ]
+        #   [ 2(xz - yw),       2(yz + xw),     1 - 2(x^2+y^2) ]
+
         o = np.concatenate(
             [
-                1 - two_s * (j * j + k * k),
-                two_s * (i * j - k * r),
-                two_s * (i * k + j * r),
-                two_s * (i * j + k * r),
-                1 - two_s * (i * i + k * k),
-                two_s * (j * k - i * r),
-                two_s * (i * k - j * r),
-                two_s * (j * k + i * r),
-                1 - two_s * (i * i + j * j),
+                1 - two_s * (y * y + z * z),  # (0,0)
+                two_s * (x * y - z * w),  # (0,1)
+                two_s * (x * z + y * w),  # (0,2)
+                two_s * (x * y + z * w),  # (1,0)
+                1 - two_s * (x * x + z * z),  # (1,1)
+                two_s * (y * z - x * w),  # (1,2)
+                two_s * (x * z - y * w),  # (2,0)
+                two_s * (y * z + x * w),  # (2,1)
+                1 - two_s * (x * x + y * y),  # (2,2)
             ],
             axis=-1,
         )
-        shape = quats.shape[:-1] + (3, 3)
-        rots = o.reshape(shape)
+
     else:
         raise TypeError("Input must be a torch.Tensor or np.ndarray")
+
+    # Reshape to (..., 3, 3)
+    rot_shape = quats.shape[:-1] + (3, 3)
+    rots = o.reshape(rot_shape)
 
     if unsqueezed:
         rots = rots.squeeze(0)

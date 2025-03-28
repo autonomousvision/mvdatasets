@@ -54,14 +54,65 @@ def rotation_matrix(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     )
 
 
-def deg2rad(
+def deg_to_rad(
     deg: Union[float, np.ndarray, torch.Tensor]
 ) -> Union[float, np.ndarray, torch.Tensor]:
     return deg * np.pi / 180
 
 
+def rad_to_deg(
+    rad: Union[float, np.ndarray, torch.Tensor]
+) -> Union[float, np.ndarray, torch.Tensor]:
+    return rad * 180 / np.pi
+
+
 def scale_3d(scale: float) -> np.ndarray:
     return np.array([[scale, 0, 0], [0, scale, 0], [0, 0, scale]])
+
+
+def rots_to_euler(
+    rots: Union[np.ndarray, torch.Tensor]
+) -> Union[np.ndarray, torch.Tensor]:
+    """
+    Convert rotation matrices to Euler angles (roll, pitch, yaw), in XYZ convention.
+    Supports both PyTorch tensors and NumPy arrays. The output will match the type of
+    the input (PyTorch -> PyTorch, NumPy -> NumPy).
+
+    Args:
+        rots (torch.Tensor or np.ndarray): A tensor/array of shape (..., 3, 3)
+            representing a batch of rotation matrices.
+
+    Returns:
+        torch.Tensor or np.ndarray of shape (..., 3): The corresponding Euler angles
+        in (roll, pitch, yaw) format, in radians.
+    """
+    # Check which library we should use
+    if isinstance(rots, torch.Tensor):
+        # Use PyTorch operations
+        # pitch = asin(-r_{2,0}) in the XYZ (roll-pitch-yaw) convention
+        r20 = torch.clamp(-rots[..., 2, 0], min=-1.0, max=1.0)
+        pitch = torch.asin(r20)
+
+        # roll = atan2(r_{2,1}, r_{2,2})
+        roll = torch.atan2(rots[..., 2, 1], rots[..., 2, 2])
+
+        # yaw = atan2(r_{1,0}, r_{0,0})
+        yaw = torch.atan2(rots[..., 1, 0], rots[..., 0, 0])
+
+        return torch.stack([roll, pitch, yaw], dim=-1)
+
+    elif isinstance(rots, np.ndarray):
+        # Use NumPy operations
+        r20 = np.clip(-rots[..., 2, 0], -1.0, 1.0)
+        pitch = np.arcsin(r20)
+
+        roll = np.arctan2(rots[..., 2, 1], rots[..., 2, 2])
+        yaw = np.arctan2(rots[..., 1, 0], rots[..., 0, 0])
+
+        return np.stack([roll, pitch, yaw], axis=-1)
+
+    else:
+        raise TypeError("rots must be either a torch.Tensor or a np.ndarray.")
 
 
 def rot_x_3d(theta: float, device: str = None) -> Union[np.ndarray, torch.Tensor]:
@@ -151,7 +202,9 @@ def rot_euler_3d_deg(
     theta_x: float, theta_y: float, theta_z: float, device: str = None
 ) -> Union[np.ndarray, torch.Tensor]:
     """angles are in degrees"""
-    return rot_euler_3d(deg2rad(theta_x), deg2rad(theta_y), deg2rad(theta_z), device)
+    return rot_euler_3d(
+        deg_to_rad(theta_x), deg_to_rad(theta_y), deg_to_rad(theta_z), device
+    )
 
 
 def opengl_matrix_world_from_w2c(w2c: np.ndarray) -> np.ndarray:
